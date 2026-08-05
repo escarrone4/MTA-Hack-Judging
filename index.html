@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MTA Hack — Cohort 2 — Judging Scorecard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <div class="mta-mark">MTA</div>
+      <div>
+        <h1>MTA Hack — Cohort 2</h1>
+        <p class="subtitle">Judging scorecard — please score each team after their presentation</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="controls">
+      <label class="inline">Judge name
+        <input id="judgeName" type="text" placeholder="Your name (optional)">
+      </label>
+
+      <label class="inline">Track
+        <select id="trackSelect">
+          <option value="business">Track 1 — Business User Track (7 teams)</option>
+          <option value="developer">Track 2 — Developer Track (8 teams)</option>
+        </select>
+      </label>
+
+      <label class="inline">Team
+        <select id="teamSelect"></select>
+      </label>
+
+      <button id="resetBtn" class="muted">Reset</button>
+    </section>
+
+    <form id="scoreForm">
+      <div id="criteriaContainer" class="criteria-grid"></div>
+
+      <div class="summary">
+        <strong>Total weighted score:</strong>
+        <span id="totalScore">0</span>/100
+      </div>
+
+      <div class="actions">
+        <button type="button" id="calcBtn">Calculate</button>
+        <button type="button" id="downloadBtn">Download CSV</button>
+      </div>
+    </form>
+
+    <section class="help">
+      <h2>Notes</h2>
+      <ul>
+        <li>Scores: 1 (Emerging) — 5 (Exceptional). Each criterion has a weight; the weighted total is normalized to 100.</li>
+        <li>This is a client-only app: results are downloaded as CSV for collection. If you'd like centralized submission, I can add that workflow.</li>
+        <li>Team names reflect Cohort 2. No individual participant names are stored or displayed in the voting UI.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">&copy; MTA Hack — Cohort 2</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
