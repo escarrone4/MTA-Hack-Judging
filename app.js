@@ -1,5 +1,5 @@
 // app.js — scoring logic and UI (cohort 2, team names added)
-const ENDPOINT_URL = 'https://<YOUR_NETLIFY_SITE>.netlify.app/.netlify/functions/submit'; // replace with your deployed function URL
+const ENDPOINT_URL = '/.netlify/functions/submit'; // use relative path to call the Netlify function on the same site
 
 const businessCriteria = [
   { key: 'alignment', title: 'Alignment to Assigned Use Case', weight: 20 },
