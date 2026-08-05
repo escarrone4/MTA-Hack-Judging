@@ -47,6 +47,8 @@ const downloadBtn = document.getElementById('downloadBtn');
 const totalScoreEl = document.getElementById('totalScore');
 const resetBtn = document.getElementById('resetBtn');
 const judgeNameEl = document.getElementById('judgeName');
+const judgeEmailEl = document.getElementById('judgeEmail');
+const submitBtn = document.getElementById('submitBtn');
 
 function populateTeams(){
   const t = trackSelect.value;
@@ -111,6 +113,7 @@ function gatherResults(){
   const teamLabel = teams[t].find(x => x.id === teamSelect.value)?.name || teamSelect.value;
   const results = {
     judge: judgeNameEl.value || '',
+    judge_email: judgeEmailEl && judgeEmailEl.value ? judgeEmailEl.value : '',
     track: t,
     team: teamLabel,
     timestamp: new Date().toISOString(),
@@ -125,12 +128,16 @@ function gatherResults(){
   return results;
 }
 
+function sanitizeTimestampForFilename(dt){
+  return dt.replace(/:/g,'-');
+}
+
 function downloadCSV(){
   const r = gatherResults();
-  // produce CSV with header rows
+  // produce CSV with header rows (include judge_email)
   let lines = [];
-  lines.push(["judge", "track", "team", "timestamp", "total" ].join(','));
-  lines.push([`"${r.judge.replace(/"/g,'""') }"`, r.track, `"${r.team.replace(/"/g,'""')}"`, r.timestamp, r.total].join(','));
+  lines.push(["judge", "judge_email", "track", "team", "timestamp", "total" ].join(','));
+  lines.push([`"${(r.judge||'').replace(/"/g,'""') }"`, `"${(r.judge_email||'').replace(/"/g,'""')}"`, r.track, `"${r.team.replace(/"/g,'""')}"`, r.timestamp, r.total].join(','));
   lines.push('');
   lines.push(['criterion','weight','score','notes'].join(','));
   r.criteria.forEach(c => {
@@ -143,16 +150,57 @@ function downloadCSV(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
+  // sanitize timestamp for filename (replace colons)
+  const ts = sanitizeTimestampForFilename((new Date()).toISOString());
   const trackLabel = r.track === 'business' ? 'track1' : 'track2';
-  a.download = `judging_${trackLabel}_${r.team.replace(/\s+/g,'_')}_${(new Date()).toISOString()}.csv`;
+  a.download = `judging_${trackLabel}_${r.team.replace(/\s+/g,'_')}_${ts}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
 }
 
+function submitToGitHubIssue(){
+  const email = (judgeEmailEl && judgeEmailEl.value || '').trim();
+  // simple email validation
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if(!email || !emailValid){
+    alert('Please enter a valid judge email before submitting.');
+    if(judgeEmailEl) judgeEmailEl.focus();
+    return;
+  }
+
+  const r = gatherResults();
+  const title = `Judging submission — ${r.team}`;
+
+  // Build readable issue body
+  const bodyLines = [];
+  bodyLines.push(`**Judge:** ${r.judge || '(not provided)'} `);
+  bodyLines.push(`**Judge email:** ${r.judge_email}`);
+  bodyLines.push(`**Track:** ${r.track}`);
+  bodyLines.push(`**Team:** ${r.team}`);
+  bodyLines.push(`**Timestamp:** ${r.timestamp}`);
+  bodyLines.push(`**Total score:** ${r.total}/100`);
+  bodyLines.push('');
+  bodyLines.push('### Criteria');
+  r.criteria.forEach(c => {
+    const noteStr = c.notes ? ` — ${c.notes}` : '';
+    bodyLines.push(`- **${c.title}** (${c.weight}%): ${c.score}${noteStr}`);
+  });
+  bodyLines.push('');
+  bodyLines.push('_Submitted via MTA Hack judging scorecard_');
+
+  const body = encodeURIComponent(bodyLines.join('\n'));
+  const labels = encodeURIComponent('submission');
+
+  // Open prefilled issue: judges must be signed into GitHub and click "Submit issue"
+  const issueUrl = `https://github.com/escarrone4/MTA-Hack-Judging/issues/new?title=${encodeURIComponent(title)}&body=${body}&labels=${labels}`;
+  window.open(issueUrl, '_blank');
+}
+
 function resetForm(){
   judgeNameEl.value = '';
+  if(judgeEmailEl) judgeEmailEl.value = '';
   buildCriteria();
   totalScoreEl.textContent = '0';
 }
@@ -162,6 +210,9 @@ trackSelect.addEventListener('change', () => { populateTeams(); buildCriteria();
 calcBtn.addEventListener('click', () => calculateScore());
 downloadBtn.addEventListener('click', () => downloadCSV());
 resetBtn.addEventListener('click', () => resetForm());
+if(submitBtn){
+  submitBtn.addEventListener('click', () => submitToGitHubIssue());
+}
 
 // init
 populateTeams();
