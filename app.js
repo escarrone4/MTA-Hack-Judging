@@ -1,4 +1,6 @@
 // app.js — scoring logic and UI (cohort 2, team names added)
+const ENDPOINT_URL = 'https://<YOUR_NETLIFY_SITE>.netlify.app/.netlify/functions/submit'; // replace with your deployed function URL
+
 const businessCriteria = [
   { key: 'alignment', title: 'Alignment to Assigned Use Case', weight: 20 },
   { key: 'design', title: 'Copilot Design & Orchestration', weight: 30 },
@@ -160,7 +162,7 @@ function downloadCSV(){
   URL.revokeObjectURL(url);
 }
 
-function submitToGitHubIssue(){
+async function submitToServer(){
   const email = (judgeEmailEl && judgeEmailEl.value || '').trim();
   // simple email validation
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -171,31 +173,32 @@ function submitToGitHubIssue(){
   }
 
   const r = gatherResults();
-  const title = `Judging submission — ${r.team}`;
 
-  // Build readable issue body
-  const bodyLines = [];
-  bodyLines.push(`**Judge:** ${r.judge || '(not provided)'} `);
-  bodyLines.push(`**Judge email:** ${r.judge_email}`);
-  bodyLines.push(`**Track:** ${r.track}`);
-  bodyLines.push(`**Team:** ${r.team}`);
-  bodyLines.push(`**Timestamp:** ${r.timestamp}`);
-  bodyLines.push(`**Total score:** ${r.total}/100`);
-  bodyLines.push('');
-  bodyLines.push('### Criteria');
-  r.criteria.forEach(c => {
-    const noteStr = c.notes ? ` — ${c.notes}` : '';
-    bodyLines.push(`- **${c.title}** (${c.weight}%): ${c.score}${noteStr}`);
-  });
-  bodyLines.push('');
-  bodyLines.push('_Submitted via MTA Hack judging scorecard_');
+  try{
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
 
-  const body = encodeURIComponent(bodyLines.join('\n'));
-  const labels = encodeURIComponent('submission');
-
-  // Open prefilled issue: judges must be signed into GitHub and click "Submit issue"
-  const issueUrl = `https://github.com/escarrone4/MTA-Hack-Judging/issues/new?title=${encodeURIComponent(title)}&body=${body}&labels=${labels}`;
-  window.open(issueUrl, '_blank');
+    const res = await fetch(ENDPOINT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(r)
+    });
+    const j = await res.json();
+    if(res.ok){
+      alert('Submission saved. You can now select the next team and submit again.');
+      // Optionally reset criteria notes but keep judge info
+      // buildCriteria(); // uncomment if you want to clear scores to defaults
+    } else {
+      console.error('Submit error', j);
+      alert('Submission failed: ' + (j.error || JSON.stringify(j)));
+    }
+  } catch(e){
+    console.error(e);
+    alert('Submission failed: ' + e.message);
+  } finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit';
+  }
 }
 
 function resetForm(){
@@ -211,7 +214,7 @@ calcBtn.addEventListener('click', () => calculateScore());
 downloadBtn.addEventListener('click', () => downloadCSV());
 resetBtn.addEventListener('click', () => resetForm());
 if(submitBtn){
-  submitBtn.addEventListener('click', () => submitToGitHubIssue());
+  submitBtn.addEventListener('click', () => submitToServer());
 }
 
 // init
