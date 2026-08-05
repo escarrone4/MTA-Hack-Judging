@@ -3,9 +3,41 @@
 const owner = 'escarrone4';
 const repo = 'MTA-Hack-Judging';
 const path = 'submissions/submissions.csv';
-const branch = 'main'; // change to 'add-scorecard' if you prefer commits to that branch
+const branch = 'add-scorecard'; // commit CSV to add-scorecard branch
 
 const b64 = (s) => Buffer.from(s, 'utf8').toString('base64');
+
+function parseCSVRow(line){
+  const fields = [];
+  let cur = '';
+  let inQuotes = false;
+  for(let i=0;i<line.length;i++){
+    const ch = line[i];
+    if(inQuotes){
+      if(ch === '"'){
+        if(line[i+1] === '"'){
+          cur += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else {
+      if(ch === '"'){
+        inQuotes = true;
+      } else if(ch === ','){
+        fields.push(cur);
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+  }
+  fields.push(cur);
+  return fields;
+}
 
 exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
@@ -51,9 +83,28 @@ exports.handler = async function (event) {
       const getJson = await getRes.json();
       existing = Buffer.from(getJson.content, 'base64').toString('utf8');
       sha = getJson.sha;
+
+      // DUPLICATE DETECTION: parse CSV and look for matching judge_email + team
+      const lines = existing.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if(lines.length > 0){
+        const header = lines[0];
+        const headerFields = parseCSVRow(header);
+        const emailIdx = headerFields.indexOf('judge_email');
+        const teamIdx = headerFields.indexOf('team');
+        if(emailIdx !== -1 && teamIdx !== -1){
+          for(let i=1;i<lines.length;i++){
+            const fields = parseCSVRow(lines[i]);
+            const existingEmail = fields[emailIdx] || '';
+            const existingTeam = fields[teamIdx] || '';
+            if(existingEmail === payload.judge_email && existingTeam === payload.team){
+              return { statusCode: 409, body: JSON.stringify({ error: 'Duplicate submission', message: 'A submission for this judge email and team already exists.' }) };
+            }
+          }
+        }
+      }
+
     } else if (getRes.status === 404) {
-      // file doesn't exist yet — will create
-      existing = null;
+      existing = null; // will create file
     } else {
       const text = await getRes.text();
       return { statusCode: 500, body: JSON.stringify({ error: 'GitHub read error', detail: text }) };
